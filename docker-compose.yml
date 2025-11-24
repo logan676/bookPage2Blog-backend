@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && gunicorn bookpost_project.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./:/app
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-this}
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+      - DATABASE_URL=postgresql://bookpost:bookpost@db:5432/bookpost
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - USE_S3=${USE_S3:-False}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
+      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=bookpost
+      - POSTGRES_USER=bookpost
+      - POSTGRES_PASSWORD=bookpost
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+  media_volume:

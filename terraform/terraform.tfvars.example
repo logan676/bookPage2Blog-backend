@@ -1,0 +1,7 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+aws_region         = "us-east-1"
+project_name       = "bookpost"
+environment        = "prod"
+db_password        = "change-this-strong-password"
+django_secret_key  = "change-this-secret-key"
