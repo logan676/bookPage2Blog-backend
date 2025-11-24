@@ -45,3 +45,6 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code settings (keep local only)
+.claude/
