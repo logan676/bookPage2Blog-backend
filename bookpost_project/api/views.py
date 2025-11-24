@@ -9,13 +9,15 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 
-from .models import BlogPost, Paragraph, Idea
+from .models import BlogPost, Paragraph, Idea, Underline
 from .serializers import (
     BlogPostListSerializer,
     BlogPostDetailSerializer,
     BlogPostUploadSerializer,
     IdeaSerializer,
     IdeaCreateSerializer,
+    UnderlineSerializer,
+    UnderlineCreateSerializer,
 )
 from .ocr_service import ocr_service
 
@@ -227,6 +229,65 @@ class IdeaViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """Delete idea."""
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UnderlineViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Underline model.
+
+    Endpoints:
+    - GET    /api/underlines/?post={post_id}  - List underlines for a post
+    - POST   /api/underlines/                 - Create new underline
+    - DELETE /api/underlines/{id}/            - Delete underline
+    """
+    queryset = Underline.objects.all()
+    serializer_class = UnderlineSerializer
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == 'create':
+            return UnderlineCreateSerializer
+        return UnderlineSerializer
+
+    def get_queryset(self):
+        """Filter underlines by post_id if provided."""
+        queryset = Underline.objects.all()
+        post_id = self.request.query_params.get('post', None)
+
+        if post_id:
+            queryset = queryset.filter(post_id=post_id)
+
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Create new underline linked to a paragraph."""
+        # Get post_id from request data
+        post_id = request.data.get('post_id')
+        if not post_id:
+            return Response(
+                {'error': 'post_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verify post exists
+        get_object_or_404(BlogPost, id=post_id)
+
+        serializer = UnderlineCreateSerializer(
+            data=request.data,
+            context={'post_id': post_id, 'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        underline = serializer.save()
+
+        # Return created underline with full serialization
+        response_serializer = UnderlineSerializer(underline)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete underline."""
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)

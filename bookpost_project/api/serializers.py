@@ -3,7 +3,7 @@ Django REST Framework serializers.
 Transforms Django models to/from JSON matching React interfaces.
 """
 from rest_framework import serializers
-from .models import BlogPost, Paragraph, Idea
+from .models import BlogPost, Paragraph, Idea, Underline
 
 
 class ParagraphSerializer(serializers.ModelSerializer):
@@ -71,6 +71,58 @@ class IdeaCreateSerializer(serializers.ModelSerializer):
         return idea
 
 
+class UnderlineSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Underline model.
+    Matches React Underline interface: { id, paragraphId, text, startOffset, endOffset }
+    """
+    id = serializers.CharField(read_only=True)
+    paragraphId = serializers.IntegerField(source='paragraph.paragraph_id', read_only=True)
+    startOffset = serializers.IntegerField(source='start_offset')
+    endOffset = serializers.IntegerField(source='end_offset')
+
+    class Meta:
+        model = Underline
+        fields = ['id', 'paragraphId', 'text', 'startOffset', 'endOffset']
+
+
+class UnderlineCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating new underlines.
+    Accepts paragraphId instead of paragraph object.
+    """
+    paragraphId = serializers.IntegerField(write_only=True)
+    startOffset = serializers.IntegerField(source='start_offset')
+    endOffset = serializers.IntegerField(source='end_offset')
+
+    class Meta:
+        model = Underline
+        fields = ['paragraphId', 'text', 'startOffset', 'endOffset']
+
+    def create(self, validated_data):
+        paragraph_id = validated_data.pop('paragraphId')
+        post_id = self.context.get('post_id')
+
+        # Get the paragraph by post and paragraph_id
+        try:
+            paragraph = Paragraph.objects.get(
+                post_id=post_id,
+                paragraph_id=paragraph_id
+            )
+        except Paragraph.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Paragraph {paragraph_id} not found in this post."
+            )
+
+        # Create the underline
+        underline = Underline.objects.create(
+            post_id=post_id,
+            paragraph=paragraph,
+            **validated_data
+        )
+        return underline
+
+
 class BlogPostListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for listing posts.
@@ -96,17 +148,18 @@ class BlogPostListSerializer(serializers.ModelSerializer):
 
 class BlogPostDetailSerializer(serializers.ModelSerializer):
     """
-    Full serializer for single post with nested paragraphs and ideas.
+    Full serializer for single post with nested paragraphs, ideas, and underlines.
     Matches React BlogPost interface.
     """
     publishDate = serializers.CharField(source='publish_date', read_only=True)
     imageUrl = serializers.SerializerMethodField()
     content = ParagraphSerializer(many=True, read_only=True)
     ideas = IdeaSerializer(many=True, read_only=True)
+    underlines = UnderlineSerializer(many=True, read_only=True)
 
     class Meta:
         model = BlogPost
-        fields = ['id', 'title', 'author', 'publishDate', 'imageUrl', 'content', 'ideas']
+        fields = ['id', 'title', 'author', 'publishDate', 'imageUrl', 'content', 'ideas', 'underlines']
 
     def get_imageUrl(self, obj):
         """Return full URL for image."""

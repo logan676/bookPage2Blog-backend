@@ -97,3 +97,37 @@ class Idea(models.Model):
     def paragraph_id(self):
         """Return paragraph_id for frontend compatibility."""
         return self.paragraph.paragraph_id
+
+
+class Underline(models.Model):
+    """
+    Underlined text in a paragraph (before adding a full idea/note).
+    Maps to React Underline interface.
+    """
+    post = models.ForeignKey(
+        BlogPost,
+        on_delete=models.CASCADE,
+        related_name='underlines'
+    )
+    paragraph = models.ForeignKey(
+        Paragraph,
+        on_delete=models.CASCADE,
+        related_name='underlines'
+    )
+    text = models.TextField(help_text='The underlined text')
+    start_offset = models.IntegerField(help_text='Starting position in paragraph text')
+    end_offset = models.IntegerField(help_text='Ending position in paragraph text')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['start_offset']
+        verbose_name = 'Underline'
+        verbose_name_plural = 'Underlines'
+
+    def __str__(self):
+        return f"Underline '{self.text[:30]}...' in paragraph {self.paragraph.paragraph_id}"
+
+    @property
+    def paragraph_id(self):
+        """Return paragraph_id for frontend compatibility."""
+        return self.paragraph.paragraph_id
